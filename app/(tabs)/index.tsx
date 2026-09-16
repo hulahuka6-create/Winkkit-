@@ -1,48 +1,26 @@
-import { ScrollView, Text, View, TouchableOpacity } from "react-native";
-
+import { useRouter } from "expo-router";
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { WinkkitBadge, WinkkitCard, WinkkitEmptyState } from "@/components/winkkit";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useColors } from "@/hooks/use-colors";
+import { trpc } from "@/lib/trpc";
 
-/**
- * Home Screen - NativeWind Example
- *
- * This template uses NativeWind (Tailwind CSS for React Native).
- * You can use familiar Tailwind classes directly in className props.
- *
- * Key patterns:
- * - Use `className` instead of `style` for most styling
- * - Theme colors: use tokens directly (bg-background, text-foreground, bg-primary, etc.); no dark: prefix needed
- * - Responsive: standard Tailwind breakpoints work on web
- * - Custom colors defined in tailwind.config.js
- */
+const categories = ["Groceries", "Bakery", "Pharmacy", "Dairy", "Personal Care"];
+
 export default function HomeScreen() {
-  return (
-    <ScreenContainer className="p-6">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View className="flex-1 gap-8">
-          {/* Hero Section */}
-          <View className="items-center gap-2">
-            <Text className="text-4xl font-bold text-foreground">Welcome</Text>
-            <Text className="text-base text-muted text-center">
-              Edit app/(tabs)/index.tsx to get started
-            </Text>
-          </View>
-
-          {/* Example Card */}
-          <View className="w-full max-w-sm self-center bg-surface rounded-2xl p-6 shadow-sm border border-border">
-            <Text className="text-lg font-semibold text-foreground mb-2">NativeWind Ready</Text>
-            <Text className="text-sm text-muted leading-relaxed">
-              Use Tailwind CSS classes directly in your React Native components.
-            </Text>
-          </View>
-
-          {/* Example Button */}
-          <View className="items-center">
-            <TouchableOpacity className="bg-primary px-6 py-3 rounded-full active:opacity-80">
-              <Text className="text-background font-semibold">Get Started</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-    </ScreenContainer>
-  );
+  const colors = useColors();
+  const router = useRouter();
+  const shops = trpc.shops.list.useQuery(undefined, { staleTime: 30_000 });
+  return <ScreenContainer>
+    <FlatList data={shops.data ?? []} keyExtractor={(item) => String(item.id)} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} ListHeaderComponent={<View>
+      <View style={styles.topRow}><View><Text style={[styles.eyebrow, { color: colors.muted }]}>Delivering to</Text><Pressable style={styles.locationRow}><IconSymbol name="location.fill" size={18} color={colors.primary} /><Text style={[styles.location, { color: colors.foreground }]}>Choose your address</Text><IconSymbol name="chevron.right" size={16} color={colors.muted} /></Pressable></View><Pressable style={[styles.bell, { backgroundColor: colors.surface, borderColor: colors.border }]}><IconSymbol name="bell" size={21} color={colors.foreground} /></Pressable></View>
+      <Pressable onPress={() => router.push("/search")} style={[styles.searchBox, { backgroundColor: colors.surface, borderColor: colors.border }]}><IconSymbol name="magnifyingglass" size={20} color={colors.muted} /><Text style={[styles.searchText, { color: colors.muted }]}>Search shops, products or categories</Text></Pressable>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Browse categories</Text>
+      <FlatList horizontal data={categories} showsHorizontalScrollIndicator={false} keyExtractor={(item) => item} contentContainerStyle={styles.categoryList} renderItem={({ item }) => <Pressable style={[styles.category, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}22` }]} onPress={() => router.push({ pathname: "/search", params: { category: item } })}><Text style={[styles.categoryText, { color: colors.primary }]}>{item}</Text></Pressable>} />
+      <View style={styles.shopHeader}><Text style={[styles.sectionTitle, { color: colors.foreground }]}>Nearby shops</Text><WinkkitBadge label={shops.isLoading ? "Loading" : `${shops.data?.length ?? 0} available`} tone="aqua" /></View>
+    </View>} ListEmptyComponent={shops.isLoading ? <View style={styles.loading}><ActivityIndicator color={colors.primary} /><Text style={[styles.loadingText, { color: colors.muted }]}>Finding approved shops near you…</Text></View> : <WinkkitEmptyState title="Your local marketplace is ready" message="Approved shops will appear here as soon as they join Winkkit in your service area." action="Search again" onAction={() => shops.refetch()} />} renderItem={({ item }) => <Pressable onPress={() => router.push({ pathname: "/shop/[id]", params: { id: String(item.id) } })} style={({ pressed }) => [styles.shopPressable, pressed && { opacity: 0.82 }]}><WinkkitCard><View style={styles.shopRow}><View style={[styles.shopMark, { backgroundColor: `${colors.primary}12` }]}><Text style={[styles.shopMarkText, { color: colors.primary }]}>{item.name.slice(0, 1).toUpperCase()}</Text></View><View style={styles.shopInfo}><Text style={[styles.shopName, { color: colors.foreground }]} numberOfLines={1}>{item.name}</Text><Text style={[styles.shopDescription, { color: colors.muted }]} numberOfLines={2}>{item.description || item.address}</Text><View style={styles.meta}><WinkkitBadge label={item.isOpen ? "Open" : "Closed"} tone={item.isOpen ? "success" : "neutral"} /><Text style={[styles.metaText, { color: colors.muted }]}>{item.estimatedMinutes} min</Text><Text style={[styles.metaText, { color: colors.muted }]}>{item.deliveryFeeCents ? `₹${(item.deliveryFeeCents / 100).toFixed(0)} delivery` : "Delivery fee shown at checkout"}</Text></View></View><IconSymbol name="chevron.right" size={20} color={colors.muted} /></View></WinkkitCard></Pressable>} />
+  </ScreenContainer>;
 }
+
+const styles: any = StyleSheet.create({ content: { padding: 20, paddingBottom: 34 }, topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }, eyebrow: { fontSize: 12, fontWeight: "600", marginBottom: 5 }, locationRow: { flexDirection: "row", alignItems: "center", gap: 5 }, location: { fontSize: 15, fontWeight: "700", maxWidth: 230 }, bell: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" }, searchBox: { minHeight: 52, borderWidth: 1, borderRadius: 16, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 15, marginBottom: 28 }, searchText: { fontSize: 14, flex: 1 }, sectionTitle: { fontSize: 19, fontWeight: "800", marginBottom: 14 }, categoryList: { gap: 9, paddingBottom: 28 }, category: { borderRadius: 13, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 11 }, categoryText: { fontSize: 13, fontWeight: "700" }, shopHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }, shopPressable: { marginBottom: 12 }, shopRow: { flexDirection: "row", alignItems: "center", gap: 12 }, shopMark: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center" }, shopMarkText: { fontSize: 22, fontWeight: "800" }, shopInfo: { flex: 1, minWidth: 0 }, shopName: { fontSize: 16, fontWeight: "800", marginBottom: 5 }, shopDescription: { fontSize: 13, lineHeight: 18, marginBottom: 8 }, meta: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }, metaText: { fontSize: 12 }, loading: { alignItems: "center", paddingVertical: 44, gap: 12 }, loadingText: { fontSize: 14 } });

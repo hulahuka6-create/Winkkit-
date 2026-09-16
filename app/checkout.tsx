@@ -1,0 +1,36 @@
+import { useRouter } from "expo-router";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useState } from "react";
+import { ScreenContainer } from "@/components/screen-container";
+import { WinkkitButton, WinkkitCard } from "@/components/winkkit";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useAuth } from "@/hooks/use-auth";
+import { useColors } from "@/hooks/use-colors";
+import { useCart } from "@/lib/cart";
+import { trpc } from "@/lib/trpc";
+
+export default function CheckoutScreen() {
+  const colors = useColors();
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const { lines, subtotalCents, clear } = useCart();
+  const [address, setAddress] = useState("");
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState("");
+  const createOrder = trpc.orders.create.useMutation({ onSuccess: () => { clear(); router.replace("/order-success"); } });
+  const disabled = !lines.length || !isAuthenticated || !address.trim() || createOrder.isPending;
+
+  const placeOrder = async () => {
+    if (!lines.length || !isAuthenticated) return;
+    setError("");
+    try {
+      await createOrder.mutateAsync({ shopId: lines[0].shopId, notes: notes.trim() || undefined, items: lines.map((line) => ({ productId: line.id, quantity: line.quantity })) });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We could not place your order. Please try again.");
+    }
+  };
+
+  return <ScreenContainer className="p-5"><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}><Pressable style={styles.back} onPress={() => router.back()}><IconSymbol name="chevron.left" size={20} color={colors.foreground} /><Text style={[styles.backText, { color: colors.foreground }]}>Back to cart</Text></Pressable><Text style={[styles.title, { color: colors.foreground }]}>Checkout</Text><Text style={[styles.subtitle, { color: colors.muted }]}>Confirm delivery details before placing your order.</Text>{!isAuthenticated ? <WinkkitCard style={styles.notice}><IconSymbol name="shield" size={20} color={colors.warning} /><Text style={[styles.noticeText, { color: colors.foreground }]}>Sign in from Account before placing an order. Your checkout is never submitted without an authenticated customer.</Text></WinkkitCard> : null}<Text style={[styles.sectionTitle, { color: colors.foreground }]}>Delivery address</Text><TextInput value={address} onChangeText={setAddress} placeholder="House number, street, area" placeholderTextColor={colors.muted} multiline style={[styles.textArea, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]} /><Text style={[styles.sectionTitle, { color: colors.foreground }]}>Order notes <Text style={[styles.optional, { color: colors.muted }]}>(optional)</Text></Text><TextInput value={notes} onChangeText={setNotes} placeholder="Any delivery instructions" placeholderTextColor={colors.muted} multiline style={[styles.textArea, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]} /><WinkkitCard style={styles.summary}><View style={styles.row}><Text style={[styles.label, { color: colors.muted }]}>Items</Text><Text style={[styles.value, { color: colors.foreground }]}>₹{(subtotalCents / 100).toFixed(2)}</Text></View><View style={styles.row}><Text style={[styles.label, { color: colors.muted }]}>Delivery fee</Text><Text style={[styles.value, { color: colors.muted }]}>Confirmed by shop at checkout</Text></View><View style={[styles.row, styles.totalRow, { borderTopColor: colors.border }]}><Text style={[styles.totalLabel, { color: colors.foreground }]}>Estimated total</Text><Text style={[styles.total, { color: colors.foreground }]}>₹{(subtotalCents / 100).toFixed(2)}</Text></View><Text style={[styles.paymentNote, { color: colors.muted }]}>Payment status is recorded by the backend. A live payment gateway key is required before accepting real money in production.</Text></WinkkitCard>{error ? <Text style={[styles.error, { color: colors.error }]}>{error}</Text> : null}<WinkkitButton label={createOrder.isPending ? "Placing order…" : "Place order"} disabled={disabled} onPress={placeOrder} /></ScrollView></ScreenContainer>;
+}
+
+const styles: any = StyleSheet.create({ content: { paddingBottom: 36 }, back: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 18 }, backText: { fontSize: 14, fontWeight: "700" }, title: { fontSize: 28, fontWeight: "800" }, subtitle: { fontSize: 14, marginTop: 6, marginBottom: 24 }, notice: { flexDirection: "row", gap: 10, alignItems: "flex-start", marginBottom: 24 }, noticeText: { flex: 1, fontSize: 13, lineHeight: 19 }, sectionTitle: { fontSize: 16, fontWeight: "800", marginBottom: 9, marginTop: 4 }, optional: { fontSize: 12, fontWeight: "500" }, textArea: { minHeight: 56, borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 14, fontSize: 14, marginBottom: 18, textAlignVertical: "top" }, summary: { marginTop: 8, gap: 14, marginBottom: 18 }, row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }, label: { fontSize: 13, flex: 1 }, value: { fontSize: 13, fontWeight: "700", textAlign: "right", flexShrink: 1 }, totalRow: { borderTopWidth: 1, paddingTop: 14, marginTop: 2 }, totalLabel: { fontSize: 15, fontWeight: "800" }, total: { fontSize: 18, fontWeight: "800" }, paymentNote: { fontSize: 12, lineHeight: 17 }, error: { fontSize: 13, lineHeight: 18, marginBottom: 12 } });
