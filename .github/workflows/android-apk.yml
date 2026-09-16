@@ -1,0 +1,80 @@
+name: Build and release Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build tools
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate native Android project
+        run: pnpm exec expo prebuild --platform android --non-interactive --no-install
+
+      - name: Build unsigned release APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Generate temporary release signing key
+        working-directory: android/app/build/outputs/apk/release
+        run: keytool -genkeypair -v -keystore winkkit-release.keystore -alias winkkit -keyalg RSA -keysize 2048 -validity 10000 -storepass winkkit-release -keypass winkkit-release -dname "CN=Winkkit, OU=Mobile, O=Winkkit, L=Unknown, S=Unknown, C=US"
+
+      - name: Align and sign APK
+        working-directory: android/app/build/outputs/apk/release
+        run: |
+          ZIPALIGN="$ANDROID_HOME/build-tools/35.0.0/zipalign"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$ZIPALIGN" -f 4 app-release-unsigned.apk winkkit-aligned.apk
+          "$APKSIGNER" sign --ks winkkit-release.keystore --ks-pass pass:winkkit-release --key-pass pass:winkkit-release --out Winkkit-v1.0.0.apk winkkit-aligned.apk
+          "$APKSIGNER" verify --verbose Winkkit-v1.0.0.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Winkkit-v1.0.0-apk
+          path: android/app/build/outputs/apk/release/Winkkit-v1.0.0.apk
+          if-no-files-found: error
+
+      - name: Create GitHub release and attach APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Winkkit ${{ github.ref_name }}
+          generate_release_notes: true
+          files: android/app/build/outputs/apk/release/Winkkit-v1.0.0.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
