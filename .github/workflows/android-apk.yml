@@ -65,7 +65,7 @@ jobs:
         run: |
           ZIPALIGN="$ANDROID_HOME/build-tools/35.0.0/zipalign"
           APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
-          "$ZIPALIGN" -f 4 app-release-unsigned.apk winkkit-aligned.apk
+          "$ZIPALIGN" -f 4 app-release.apk winkkit-aligned.apk
           "$APKSIGNER" sign --ks winkkit-release.keystore --ks-pass pass:winkkit-release --key-pass pass:winkkit-release --out Winkkit-v1.0.0.apk winkkit-aligned.apk
           "$APKSIGNER" verify --verbose Winkkit-v1.0.0.apk
 
