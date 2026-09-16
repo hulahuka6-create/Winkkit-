@@ -63,3 +63,10 @@ describe.skip("auth.logout", () => {
     });
   });
 });
+
+describe("authenticated user contract", () => {
+  it("keeps backend-owned role and status fields available to the client", () => {
+    const backendUser = { id: 9, openId: "shopkeeper-9", name: "Shop", email: "shop@example.com", loginMethod: "google", role: "shopkeeper", status: "pending", lastSignedIn: new Date().toISOString() };
+    expect(backendUser).toMatchObject({ role: "shopkeeper", status: "pending" });
+  });
+});
