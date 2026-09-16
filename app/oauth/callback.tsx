@@ -50,6 +50,8 @@ export default function OAuthCallback() {
                 name: userData.name,
                 email: userData.email,
                 loginMethod: userData.loginMethod,
+                role: userData.role ?? "user",
+                status: userData.status ?? "active",
                 lastSignedIn: new Date(userData.lastSignedIn || Date.now()),
               };
               await Auth.setUserInfo(userInfo);
@@ -201,6 +203,8 @@ export default function OAuthCallback() {
               name: result.user.name,
               email: result.user.email,
               loginMethod: result.user.loginMethod,
+              role: result.user.role ?? "user",
+              status: result.user.status ?? "active",
               lastSignedIn: new Date(result.user.lastSignedIn || Date.now()),
             };
             await Auth.setUserInfo(userInfo);
@@ -212,10 +216,10 @@ export default function OAuthCallback() {
           setStatus("success");
           console.log("[OAuth] Authentication successful, redirecting to home...");
 
-          // Redirect to home after a short delay
+          // Redirect to the backend-authorized workspace after a short delay
           setTimeout(() => {
             console.log("[OAuth] Executing redirect...");
-            router.replace("/(tabs)");
+            router.replace(result.user?.role && result.user.role !== "user" ? "/operations" : "/(tabs)");
           }, 1000);
         } else {
           console.error("[OAuth] No session token in result:", result);

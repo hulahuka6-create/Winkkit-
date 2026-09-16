@@ -8,6 +8,8 @@ export type User = {
   name: string | null;
   email: string | null;
   loginMethod: string | null;
+  role: "user" | "shopkeeper" | "delivery" | "admin";
+  status: "active" | "pending" | "suspended";
   lastSignedIn: Date;
 };
 
@@ -85,7 +87,8 @@ export async function getUserInfo(): Promise<User | null> {
       console.log("[Auth] No user info found");
       return null;
     }
-    const user = JSON.parse(info);
+    const raw = JSON.parse(info);
+    const user: User = { ...raw, role: raw.role ?? "user", status: raw.status ?? "active", lastSignedIn: new Date(raw.lastSignedIn ?? Date.now()) };
     console.log("[Auth] User info retrieved:", user);
     return user;
   } catch (error) {

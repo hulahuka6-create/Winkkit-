@@ -130,6 +130,8 @@ export async function getMe(): Promise<{
   name: string | null;
   email: string | null;
   loginMethod: string | null;
+  role: "user" | "shopkeeper" | "delivery" | "admin";
+  status: "active" | "pending" | "suspended";
   lastSignedIn: string;
 } | null> {
   try {

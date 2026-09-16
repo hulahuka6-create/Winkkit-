@@ -17,6 +17,7 @@ export default function CheckoutScreen() {
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  const [clientRequestId] = useState(() => `checkout-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
   const createOrder = trpc.orders.create.useMutation({ onSuccess: () => { clear(); router.replace("/order-success"); } });
   const disabled = !lines.length || !isAuthenticated || !address.trim() || createOrder.isPending;
 
@@ -24,7 +25,7 @@ export default function CheckoutScreen() {
     if (!lines.length || !isAuthenticated) return;
     setError("");
     try {
-      await createOrder.mutateAsync({ shopId: lines[0].shopId, notes: notes.trim() || undefined, items: lines.map((line) => ({ productId: line.id, quantity: line.quantity })) });
+      await createOrder.mutateAsync({ shopId: lines[0].shopId, deliveryAddress: address.trim(), clientRequestId, notes: notes.trim() || undefined, items: lines.map((line) => ({ productId: line.id, quantity: line.quantity })) });
     } catch (err) {
       setError(err instanceof Error ? err.message : "We could not place your order. Please try again.");
     }

@@ -5,8 +5,10 @@ export const users = mysqlTable("users", {
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 32 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "shopkeeper", "delivery", "admin"]).default("user").notNull(),
+  status: mysqlEnum("status", ["active", "pending", "suspended"]).default("active").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -46,6 +48,11 @@ export const shops = mysqlTable("shops", {
   isApproved: boolean("isApproved").default(false).notNull(),
   deliveryFeeCents: int("deliveryFeeCents").default(0).notNull(),
   estimatedMinutes: int("estimatedMinutes").default(45).notNull(),
+  isTemporarilyUnavailable: boolean("isTemporarilyUnavailable").default(false).notNull(),
+  openingTime: varchar("openingTime", { length: 5 }),
+  closingTime: varchar("closingTime", { length: 5 }),
+  deliveryRadiusKm: int("deliveryRadiusKm").default(5).notNull(),
+  minimumOrderCents: int("minimumOrderCents").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -58,8 +65,12 @@ export const products = mysqlTable("products", {
   description: text("description"),
   imageUrl: text("imageUrl"),
   priceCents: int("priceCents").notNull(),
+  originalPriceCents: int("originalPriceCents"),
+  unit: varchar("unit", { length: 24 }).default("piece").notNull(),
+  sku: varchar("sku", { length: 80 }),
   inventoryCount: int("inventoryCount").default(0).notNull(),
   isAvailable: boolean("isAvailable").default(true).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -71,6 +82,8 @@ export const orders = mysqlTable("orders", {
   shopId: int("shopId").notNull(),
   deliveryPartnerId: int("deliveryPartnerId"),
   addressId: int("addressId"),
+  deliveryAddress: text("deliveryAddress"),
+  clientRequestId: varchar("clientRequestId", { length: 80 }).unique(),
   status: mysqlEnum("status", ["pending_payment", "placed", "accepted", "preparing", "ready", "assigned", "picked_up", "out_for_delivery", "delivered", "completed", "cancelled", "refunded"]).default("pending_payment").notNull(),
   paymentStatus: mysqlEnum("paymentStatus", ["pending", "paid", "failed", "refunded"]).default("pending").notNull(),
   subtotalCents: int("subtotalCents").notNull(),
@@ -90,6 +103,7 @@ export const orderItems = mysqlTable("orderItems", {
   productId: int("productId").notNull(),
   productName: varchar("productName", { length: 180 }).notNull(),
   unitPriceCents: int("unitPriceCents").notNull(),
+  unit: varchar("unit", { length: 24 }).default("piece").notNull(),
   quantity: int("quantity").notNull(),
   lineTotalCents: int("lineTotalCents").notNull(),
 });
@@ -104,6 +118,15 @@ export const settlementEntries = mysqlTable("settlementEntries", {
   commissionCents: int("commissionCents").notNull(),
   status: mysqlEnum("status", ["pending", "ready", "paid"]).default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const platformSettings = mysqlTable("platformSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  commissionBps: int("commissionBps").default(1000).notNull(),
+  platformFeeCents: int("platformFeeCents").default(0).notNull(),
+  defaultDeliveryFeeCents: int("defaultDeliveryFeeCents").default(0).notNull(),
+  updatedBy: int("updatedBy"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;

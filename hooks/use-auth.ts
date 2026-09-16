@@ -32,6 +32,8 @@ export function useAuth(options?: UseAuthOptions) {
             name: apiUser.name,
             email: apiUser.email,
             loginMethod: apiUser.loginMethod,
+            role: apiUser.role,
+            status: apiUser.status,
             lastSignedIn: new Date(apiUser.lastSignedIn),
           };
           setUser(userInfo);
@@ -59,14 +61,16 @@ export function useAuth(options?: UseAuthOptions) {
         return;
       }
 
-      // Use cached user info for native (token validates the session)
+      // Revalidate the bearer token against the backend; cache is only a continuity fallback.
       const cachedUser = await Auth.getUserInfo();
-      console.log("[useAuth] Cached user:", cachedUser);
-      if (cachedUser) {
-        console.log("[useAuth] Using cached user info");
+      const apiUser = await Api.getMe();
+      if (apiUser) {
+        const userInfo: Auth.User = { id: apiUser.id, openId: apiUser.openId, name: apiUser.name, email: apiUser.email, loginMethod: apiUser.loginMethod, role: apiUser.role, status: apiUser.status, lastSignedIn: new Date(apiUser.lastSignedIn) };
+        await Auth.setUserInfo(userInfo);
+        setUser(userInfo);
+      } else if (cachedUser) {
         setUser(cachedUser);
       } else {
-        console.log("[useAuth] No cached user, setting user to null");
         setUser(null);
       }
     } catch (err) {
@@ -105,17 +109,10 @@ export function useAuth(options?: UseAuthOptions) {
         fetchUser();
       } else {
         // Native: check for cached user info first for faster initial load
-        Auth.getUserInfo().then((cachedUser) => {
-          console.log("[useAuth] Native cached user check:", cachedUser);
-          if (cachedUser) {
-            console.log("[useAuth] Native: setting cached user immediately");
-            setUser(cachedUser);
-            setLoading(false);
-          } else {
-            // No cached user, check session token
+          Auth.getUserInfo().then((cachedUser) => {
+            if (cachedUser) setUser(cachedUser);
             fetchUser();
-          }
-        });
+          });
       }
     } else {
       console.log("[useAuth] autoFetch disabled, setting loading to false");
