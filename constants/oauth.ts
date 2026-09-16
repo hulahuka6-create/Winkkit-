@@ -1,19 +1,18 @@
 import * as Linking from "expo-linking";
 import * as ReactNative from "react-native";
 
-// Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
-// e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const bundleId = "com.winkkit.app";
-const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
-const schemeFromBundleId = `manus${timestamp}`;
+// Must match the scheme declared in app.config.ts so Android can reopen the app.
+const schemeFromBundleId = "winkkit";
 
 const env = {
-  portal: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL ?? "",
-  server: process.env.EXPO_PUBLIC_OAUTH_SERVER_URL ?? "",
-  appId: process.env.EXPO_PUBLIC_APP_ID ?? "",
+  // These are public client configuration values, not credentials. The fallbacks are
+  // required for standalone APK builds, whose GitHub Actions environment has no .env file.
+  portal: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL ?? "https://manus.im",
+  server: process.env.EXPO_PUBLIC_OAUTH_SERVER_URL ?? "https://api.manus.im",
+  appId: process.env.EXPO_PUBLIC_APP_ID ?? "kmDxEGFnDmoLGNdCerDt56",
   ownerId: process.env.EXPO_PUBLIC_OWNER_OPEN_ID ?? "",
   ownerName: process.env.EXPO_PUBLIC_OWNER_NAME ?? "",
-  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
+  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://3000-i9c9vlw8o3h7zv23a9log-edbf62f9.sg2.manus.computer",
   deepLinkScheme: schemeFromBundleId,
 };
 
@@ -109,13 +108,6 @@ export async function startOAuthLogin(): Promise<string | null> {
     if (typeof window !== "undefined") {
       window.location.href = loginUrl;
     }
-    return null;
-  }
-
-  const supported = await Linking.canOpenURL(loginUrl);
-  if (!supported) {
-    console.warn("[OAuth] Cannot open login URL: URL scheme not supported");
-    // 可考虑抛出错误或返回错误状态，让调用方处理
     return null;
   }
 
