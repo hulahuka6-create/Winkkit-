@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, inArray, isNull, like, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, addresses, cartItems, categories, notifications, orderItems, orders, platformSettings, products, shops, userSettings, users } from "../drizzle/schema";
+import { InsertUser, addresses, cartItems, categories, notifications, orderItems, orders, platformSettings, products, pushTokens, shops, userSettings, users } from "../drizzle/schema";
+import { sendFcmNotification } from "./fcm";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -92,6 +93,27 @@ export async function markUserNotificationsRead(userId: number) {
   return { success: true } as const;
 }
 
+export async function registerPushToken(userId: number, token: string, platform: "android") {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  await db.insert(pushTokens).values({ userId, token, platform, isActive: true }).onDuplicateKeyUpdate({ set: { userId, platform, isActive: true, lastSeenAt: new Date() } });
+  return { success: true } as const;
+}
+
+export async function deactivatePushToken(userId: number, token: string) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  await db.update(pushTokens).set({ isActive: false }).where(and(eq(pushTokens.userId, userId), eq(pushTokens.token, token)));
+  return { success: true } as const;
+}
+
+export async function listActivePushTokens(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return (await db.select({ token: pushTokens.token }).from(pushTokens).where(and(eq(pushTokens.userId, userId), eq(pushTokens.isActive, true)))).map((row) => row.token);
+}
+
+async function notifyUserDevices(userId: number, title: string, body: string, data: Record<string, string>) {
+  try { const tokens = await listActivePushTokens(userId); if (tokens.length) await sendFcmNotification(tokens, title, body, data); } catch (error) { console.warn("[FCM] Notification dispatch failed", error); }
+}
+
 export async function exportUserData(userId: number) {
   const db = await getDb(); if (!db) throw new Error("Database not available");
   const [profile, savedAddresses, cart, userOrders, settings, userNotifications] = await Promise.all([
@@ -109,6 +131,7 @@ export async function deletePrivateUserData(userId: number) {
   const db = await getDb(); if (!db) throw new Error("Database not available");
   await db.transaction(async (tx) => {
     await tx.delete(notifications).where(eq(notifications.userId, userId));
+    await tx.delete(pushTokens).where(eq(pushTokens.userId, userId));
     await tx.delete(userSettings).where(eq(userSettings.userId, userId));
     await tx.delete(cartItems).where(eq(cartItems.userId, userId));
     await tx.delete(addresses).where(eq(addresses.userId, userId));
@@ -246,6 +269,7 @@ export async function transitionOrder(orderId: number, status: "accepted" | "pre
   const customerSettings = (await db.select().from(userSettings).where(eq(userSettings.userId, current.customerId)).limit(1))[0];
   if (customerSettings?.orderUpdates !== false) {
     await db.insert(notifications).values({ userId: current.customerId, title: "Order status updated", body: `Your order ${current.orderNumber} is now ${status.replaceAll("_", " ")}.`, kind: "order" });
+    void notifyUserDevices(current.customerId, "Order status updated", `Your order ${current.orderNumber} is now ${status.replaceAll("_", " ")}.`, { kind: "order", orderId: String(orderId), status });
   }
   return { success: true, orderId, status } as const;
 }
@@ -277,7 +301,10 @@ export async function createOrder(input: { customerId: number; shopId: number; a
     const orderId = Number((inserted as { insertId?: number }).insertId);
     await tx.insert(orderItems).values(lines.map((line) => ({ ...line, orderId })));
     const customerSettings = (await tx.select().from(userSettings).where(eq(userSettings.userId, input.customerId)).limit(1))[0];
-    if (customerSettings?.orderUpdates !== false) await tx.insert(notifications).values({ userId: input.customerId, title: "Order placed", body: `Your order ${orderNumber} was placed successfully.`, kind: "order" });
+    if (customerSettings?.orderUpdates !== false) {
+      await tx.insert(notifications).values({ userId: input.customerId, title: "Order placed", body: `Your order ${orderNumber} was placed successfully.`, kind: "order" });
+      void notifyUserDevices(input.customerId, "Order placed", `Your order ${orderNumber} was placed successfully.`, { kind: "order", orderId: String(orderId), status: "placed" });
+    }
     for (const line of lines) {
       const current = selected.find((product) => product.id === line.productId)!;
       const nextStock = current.inventoryCount - line.quantity;

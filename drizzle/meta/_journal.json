@@ -2,54 +2,13 @@
   "version": "7",
   "dialect": "mysql",
   "entries": [
-    {
-      "idx": 0,
-      "version": "5",
-      "when": 1763372440610,
-      "tag": "0000_elite_eternals",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1789493761299,
-      "tag": "0001_luxuriant_spencer_smythe",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1789564473820,
-      "tag": "0002_fixed_shinobi_shaw",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1789564535597,
-      "tag": "0003_broad_drax",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1789565046467,
-      "tag": "0004_tranquil_phalanx",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1789643149487,
-      "tag": "0005_outstanding_trish_tilby",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "5",
-      "when": 1789647578379,
-      "tag": "0006_abnormal_the_stranger",
-      "breakpoints": true
-    }
+    { "idx": 0, "version": "5", "when": 1763372440610, "tag": "0000_elite_eternals", "breakpoints": true },
+    { "idx": 1, "version": "5", "when": 1789493761299, "tag": "0001_luxuriant_spencer_smythe", "breakpoints": true },
+    { "idx": 2, "version": "5", "when": 1789564473820, "tag": "0002_fixed_shinobi_shaw", "breakpoints": true },
+    { "idx": 3, "version": "5", "when": 1789564535597, "tag": "0003_broad_drax", "breakpoints": true },
+    { "idx": 4, "version": "5", "when": 1789565046462, "tag": "0004_tranquil_phalanx", "breakpoints": true },
+    { "idx": 5, "version": "5", "when": 1789643149487, "tag": "0005_outstanding_trish_tilby", "breakpoints": true },
+    { "idx": 6, "version": "5", "when": 1789647578379, "tag": "0006_abnormal_the_stranger", "breakpoints": true },
+    { "idx": 7, "version": "5", "when": 1789656412220, "tag": "0007_rare_paladin", "breakpoints": true }
   ]
 }

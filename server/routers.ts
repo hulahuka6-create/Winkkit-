@@ -3,7 +3,7 @@ import { z } from "zod";
 import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { createOrder, createProduct, createShop, deletePrivateUserData, exportUserData, getOwnedShop, getShopById, getUserByOpenId, getUserSettings, listCategories, listOperationalOrders, listOrders, listOwnedProducts, listPendingAccounts, listPendingShops, listProducts, listShops, listUserAddresses, listUserCart, listUserNotifications, markUserNotificationsRead, replaceUserCart, requestRole, saveUserAddress, setAccountStatus, setShopApproval, transitionOrder, updateOwnedProduct, updateProductStock, updateShopStatus, updateUserSettings } from "./db";
+import { createOrder, createProduct, createShop, deactivatePushToken, deletePrivateUserData, exportUserData, getOwnedShop, getShopById, getUserByOpenId, getUserSettings, listCategories, listOperationalOrders, listOrders, listOwnedProducts, listPendingAccounts, listPendingShops, listProducts, listShops, listUserAddresses, listUserCart, listUserNotifications, markUserNotificationsRead, registerPushToken, replaceUserCart, requestRole, saveUserAddress, setAccountStatus, setShopApproval, transitionOrder, updateOwnedProduct, updateProductStock, updateShopStatus, updateUserSettings } from "./db";
 import { systemRouter } from "./_core/systemRouter";
 
 const productInput = z.object({
@@ -61,6 +61,8 @@ export const appRouter = router({
     updateSettings: protectedProcedure.input(z.object({ orderUpdates: z.boolean().optional(), promotionalNotifications: z.boolean().optional() })).mutation(({ ctx, input }) => updateUserSettings(ctx.user.id, input)),
     notifications: protectedProcedure.query(({ ctx }) => listUserNotifications(ctx.user.id)),
     markNotificationsRead: protectedProcedure.mutation(({ ctx }) => markUserNotificationsRead(ctx.user.id)),
+    registerPushToken: protectedProcedure.input(z.object({ token: z.string().trim().min(20).max(4096), platform: z.literal("android") })).mutation(({ ctx, input }) => registerPushToken(ctx.user.id, input.token, input.platform)),
+    deactivatePushToken: protectedProcedure.input(z.object({ token: z.string().trim().min(20).max(4096) })).mutation(({ ctx, input }) => deactivatePushToken(ctx.user.id, input.token)),
     exportData: protectedProcedure.query(({ ctx }) => exportUserData(ctx.user.id)),
     deletePrivateData: protectedProcedure.input(z.object({ confirmation: z.literal("DELETE MY DATA") })).mutation(({ ctx }) => deletePrivateUserData(ctx.user.id)),
   }),

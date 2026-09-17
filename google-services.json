@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "300293295414",
+    "project_id": "winkkit-17abe",
+    "storage_bucket": "winkkit-17abe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:300293295414:android:afc8ec7b4a1cb7afcaf797",
+        "android_client_info": {
+          "package_name": "com.winkkit.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC6QbWgC9gJ8iwE_xunHnyLT-ZuvR4gq-U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

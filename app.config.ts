@@ -7,7 +7,7 @@ const scheme = "winkkit";
 const config: ExpoConfig = {
   name: "Winkkit",
   slug: "winkkit",
-  version: "1.4.0",
+  version: "1.5.0",
   orientation: "portrait",
   icon: "./assets/images/winkkit-icon.png",
   scheme,
@@ -27,6 +27,7 @@ const config: ExpoConfig = {
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: bundleId,
+    googleServicesFile: "./google-services.json",
     permissions: ["POST_NOTIFICATIONS"],
   },
   web: {

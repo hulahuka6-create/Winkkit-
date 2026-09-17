@@ -57,6 +57,15 @@ export const notifications = mysqlTable("notifications", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const pushTokens = mysqlTable("pushTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  token: varchar("token", { length: 512 }).notNull().unique(),
+  platform: varchar("platform", { length: 20 }).notNull().default("android"),
+  isActive: boolean("isActive").notNull().default(true),
+  lastSeenAt: timestamp("lastSeenAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const categories = mysqlTable("categories", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
@@ -167,3 +176,4 @@ export type Order = typeof orders.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type PushToken = typeof pushTokens.$inferSelect;

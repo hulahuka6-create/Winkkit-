@@ -6,7 +6,7 @@ on:
       release_tag:
         description: "GitHub release tag to create"
         required: true
-        default: "v1.4.0"
+        default: "v1.5.0"
   push:
     tags:
       - "v*"
