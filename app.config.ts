@@ -7,7 +7,7 @@ const scheme = "winkkit";
 const config: ExpoConfig = {
   name: "Winkkit",
   slug: "winkkit",
-  version: "1.0.0",
+  version: "1.4.0",
   orientation: "portrait",
   icon: "./assets/images/winkkit-icon.png",
   scheme,

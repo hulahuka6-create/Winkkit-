@@ -39,6 +39,24 @@ export const cartItems = mysqlTable("cartItems", {
   userProductUnique: uniqueIndex("cartItems_user_product_unique").on(table.userId, table.productId),
 }));
 
+export const userSettings = mysqlTable("userSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  orderUpdates: boolean("orderUpdates").default(true).notNull(),
+  promotionalNotifications: boolean("promotionalNotifications").default(false).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  body: text("body").notNull(),
+  kind: varchar("kind", { length: 40 }).default("general").notNull(),
+  isRead: boolean("isRead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const categories = mysqlTable("categories", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
@@ -147,3 +165,5 @@ export type Shop = typeof shops.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type CartItem = typeof cartItems.$inferSelect;
+export type UserSettings = typeof userSettings.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;

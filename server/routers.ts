@@ -3,7 +3,7 @@ import { z } from "zod";
 import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { createOrder, createProduct, createShop, getOwnedShop, getShopById, getUserByOpenId, listCategories, listOperationalOrders, listOrders, listOwnedProducts, listPendingAccounts, listPendingShops, listProducts, listShops, listUserAddresses, listUserCart, replaceUserCart, requestRole, saveUserAddress, setAccountStatus, setShopApproval, transitionOrder, updateOwnedProduct, updateProductStock, updateShopStatus } from "./db";
+import { createOrder, createProduct, createShop, deletePrivateUserData, exportUserData, getOwnedShop, getShopById, getUserByOpenId, getUserSettings, listCategories, listOperationalOrders, listOrders, listOwnedProducts, listPendingAccounts, listPendingShops, listProducts, listShops, listUserAddresses, listUserCart, listUserNotifications, markUserNotificationsRead, replaceUserCart, requestRole, saveUserAddress, setAccountStatus, setShopApproval, transitionOrder, updateOwnedProduct, updateProductStock, updateShopStatus, updateUserSettings } from "./db";
 import { systemRouter } from "./_core/systemRouter";
 
 const productInput = z.object({
@@ -57,6 +57,12 @@ export const appRouter = router({
     saveAddress: protectedProcedure.input(z.object({ label: z.string().trim().min(1).max(40), line1: z.string().trim().min(3).max(255), city: z.string().trim().min(2).max(120), postalCode: z.string().trim().max(20).optional(), latitude: z.string().max(32).optional(), longitude: z.string().max(32).optional(), isDefault: z.boolean().optional() })).mutation(({ ctx, input }) => saveUserAddress(ctx.user.id, input)),
     cloudCart: protectedProcedure.query(({ ctx }) => listUserCart(ctx.user.id)),
     saveCloudCart: protectedProcedure.input(z.object({ items: z.array(z.object({ productId: z.number().int().positive(), shopId: z.number().int().positive(), quantity: z.number().int().min(0).max(99) })).max(100) })).mutation(({ ctx, input }) => replaceUserCart(ctx.user.id, input.items)),
+    settings: protectedProcedure.query(({ ctx }) => getUserSettings(ctx.user.id)),
+    updateSettings: protectedProcedure.input(z.object({ orderUpdates: z.boolean().optional(), promotionalNotifications: z.boolean().optional() })).mutation(({ ctx, input }) => updateUserSettings(ctx.user.id, input)),
+    notifications: protectedProcedure.query(({ ctx }) => listUserNotifications(ctx.user.id)),
+    markNotificationsRead: protectedProcedure.mutation(({ ctx }) => markUserNotificationsRead(ctx.user.id)),
+    exportData: protectedProcedure.query(({ ctx }) => exportUserData(ctx.user.id)),
+    deletePrivateData: protectedProcedure.input(z.object({ confirmation: z.literal("DELETE MY DATA") })).mutation(({ ctx }) => deletePrivateUserData(ctx.user.id)),
   }),
   shopkeeper: router({
     shop: protectedProcedure.query(({ ctx }) => { requireRole(ctx, ["shopkeeper"]); return getOwnedShop(ctx.user.id); }),

@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, inArray, isNull, like, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, addresses, cartItems, categories, orderItems, orders, platformSettings, products, shops, users } from "../drizzle/schema";
+import { InsertUser, addresses, cartItems, categories, notifications, orderItems, orders, platformSettings, products, shops, userSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -64,6 +64,57 @@ export async function replaceUserCart(userId: number, items: { productId: number
     if (valid.length) await tx.insert(cartItems).values(valid.map((item) => ({ userId, productId: item.productId, shopId: item.shopId, quantity: item.quantity })));
   });
   return listUserCart(userId);
+}
+
+export async function getUserSettings(userId: number) {
+  const db = await getDb(); if (!db) return { orderUpdates: true, promotionalNotifications: false };
+  const existing = (await db.select().from(userSettings).where(eq(userSettings.userId, userId)).limit(1))[0];
+  if (existing) return existing;
+  const inserted = await db.insert(userSettings).values({ userId, orderUpdates: true, promotionalNotifications: false });
+  return (await db.select().from(userSettings).where(eq(userSettings.id, Number((inserted as { insertId?: number }).insertId))).limit(1))[0];
+}
+
+export async function updateUserSettings(userId: number, input: { orderUpdates?: boolean; promotionalNotifications?: boolean }) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  await getUserSettings(userId);
+  await db.update(userSettings).set({ ...input, updatedAt: new Date() }).where(eq(userSettings.userId, userId));
+  return getUserSettings(userId);
+}
+
+export async function listUserNotifications(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(50);
+}
+
+export async function markUserNotificationsRead(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, userId));
+  return { success: true } as const;
+}
+
+export async function exportUserData(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  const [profile, savedAddresses, cart, userOrders, settings, userNotifications] = await Promise.all([
+    db.select({ id: users.id, name: users.name, email: users.email, phone: users.phone, role: users.role, status: users.status, createdAt: users.createdAt }).from(users).where(eq(users.id, userId)).limit(1),
+    db.select().from(addresses).where(eq(addresses.userId, userId)),
+    db.select().from(cartItems).where(eq(cartItems.userId, userId)),
+    db.select().from(orders).where(eq(orders.customerId, userId)).orderBy(desc(orders.createdAt)),
+    db.select().from(userSettings).where(eq(userSettings.userId, userId)).limit(1),
+    db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)),
+  ]);
+  return { exportedAt: new Date().toISOString(), profile: profile[0] ?? null, addresses: savedAddresses, cart, orders: userOrders, settings: settings[0] ?? null, notifications: userNotifications };
+}
+
+export async function deletePrivateUserData(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  await db.transaction(async (tx) => {
+    await tx.delete(notifications).where(eq(notifications.userId, userId));
+    await tx.delete(userSettings).where(eq(userSettings.userId, userId));
+    await tx.delete(cartItems).where(eq(cartItems.userId, userId));
+    await tx.delete(addresses).where(eq(addresses.userId, userId));
+    await tx.update(users).set({ name: "Deleted user", email: null, phone: null, loginMethod: null, role: "user", status: "suspended", updatedAt: new Date() }).where(eq(users.id, userId));
+  });
+  return { success: true } as const;
 }
 
 export async function listPendingAccounts() {
@@ -192,6 +243,10 @@ export async function transitionOrder(orderId: number, status: "accepted" | "pre
   } else {
     await db.update(orders).set(update).where(eq(orders.id, orderId));
   }
+  const customerSettings = (await db.select().from(userSettings).where(eq(userSettings.userId, current.customerId)).limit(1))[0];
+  if (customerSettings?.orderUpdates !== false) {
+    await db.insert(notifications).values({ userId: current.customerId, title: "Order status updated", body: `Your order ${current.orderNumber} is now ${status.replaceAll("_", " ")}.`, kind: "order" });
+  }
   return { success: true, orderId, status } as const;
 }
 
@@ -221,6 +276,8 @@ export async function createOrder(input: { customerId: number; shopId: number; a
     const inserted = await tx.insert(orders).values({ orderNumber, customerId: input.customerId, shopId: input.shopId, addressId: input.addressId, deliveryAddress: input.deliveryAddress.trim(), clientRequestId: input.clientRequestId, status: "placed", paymentStatus: "pending", subtotalCents, deliveryFeeCents, platformFeeCents, commissionCents, deliveryEarningsCents: deliveryFeeCents, totalCents, notes: input.notes });
     const orderId = Number((inserted as { insertId?: number }).insertId);
     await tx.insert(orderItems).values(lines.map((line) => ({ ...line, orderId })));
+    const customerSettings = (await tx.select().from(userSettings).where(eq(userSettings.userId, input.customerId)).limit(1))[0];
+    if (customerSettings?.orderUpdates !== false) await tx.insert(notifications).values({ userId: input.customerId, title: "Order placed", body: `Your order ${orderNumber} was placed successfully.`, kind: "order" });
     for (const line of lines) {
       const current = selected.find((product) => product.id === line.productId)!;
       const nextStock = current.inventoryCount - line.quantity;
