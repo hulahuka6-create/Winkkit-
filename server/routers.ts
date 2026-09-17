@@ -3,7 +3,7 @@ import { z } from "zod";
 import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { createOrder, createProduct, createShop, getOwnedShop, getShopById, getUserByOpenId, listCategories, listOperationalOrders, listOrders, listOwnedProducts, listPendingAccounts, listPendingShops, listProducts, listShops, requestRole, setAccountStatus, setShopApproval, transitionOrder, updateOwnedProduct, updateProductStock, updateShopStatus } from "./db";
+import { createOrder, createProduct, createShop, getOwnedShop, getShopById, getUserByOpenId, listCategories, listOperationalOrders, listOrders, listOwnedProducts, listPendingAccounts, listPendingShops, listProducts, listShops, listUserAddresses, listUserCart, replaceUserCart, requestRole, saveUserAddress, setAccountStatus, setShopApproval, transitionOrder, updateOwnedProduct, updateProductStock, updateShopStatus } from "./db";
 import { systemRouter } from "./_core/systemRouter";
 
 const productInput = z.object({
@@ -53,6 +53,10 @@ export const appRouter = router({
   }),
   account: router({
     profile: protectedProcedure.query(({ ctx }) => getUserByOpenId(ctx.user.openId)),
+    addresses: protectedProcedure.query(({ ctx }) => listUserAddresses(ctx.user.id)),
+    saveAddress: protectedProcedure.input(z.object({ label: z.string().trim().min(1).max(40), line1: z.string().trim().min(3).max(255), city: z.string().trim().min(2).max(120), postalCode: z.string().trim().max(20).optional(), latitude: z.string().max(32).optional(), longitude: z.string().max(32).optional(), isDefault: z.boolean().optional() })).mutation(({ ctx, input }) => saveUserAddress(ctx.user.id, input)),
+    cloudCart: protectedProcedure.query(({ ctx }) => listUserCart(ctx.user.id)),
+    saveCloudCart: protectedProcedure.input(z.object({ items: z.array(z.object({ productId: z.number().int().positive(), shopId: z.number().int().positive(), quantity: z.number().int().min(0).max(99) })).max(100) })).mutation(({ ctx, input }) => replaceUserCart(ctx.user.id, input.items)),
   }),
   shopkeeper: router({
     shop: protectedProcedure.query(({ ctx }) => { requireRole(ctx, ["shopkeeper"]); return getOwnedShop(ctx.user.id); }),

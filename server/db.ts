@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, inArray, isNull, like, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, categories, orderItems, orders, platformSettings, products, shops, users } from "../drizzle/schema";
+import { InsertUser, addresses, cartItems, categories, orderItems, orders, platformSettings, products, shops, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -37,6 +37,33 @@ export async function requestRole(openId: string, role: "user" | "shopkeeper" | 
   const db = await getDb(); if (!db) throw new Error("Database not available");
   await db.update(users).set({ role, status: role === "user" ? "active" : "pending", updatedAt: new Date() }).where(eq(users.openId, openId));
   return getUserByOpenId(openId);
+}
+
+export async function listUserAddresses(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select().from(addresses).where(eq(addresses.userId, userId)).orderBy(desc(addresses.isDefault), desc(addresses.createdAt));
+}
+
+export async function saveUserAddress(userId: number, input: { label: string; line1: string; city: string; postalCode?: string; latitude?: string; longitude?: string; isDefault?: boolean }) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  if (input.isDefault) await db.update(addresses).set({ isDefault: false }).where(eq(addresses.userId, userId));
+  const inserted = await db.insert(addresses).values({ userId, label: input.label.trim(), line1: input.line1.trim(), city: input.city.trim(), postalCode: input.postalCode?.trim(), latitude: input.latitude, longitude: input.longitude, isDefault: input.isDefault ?? false });
+  return (await db.select().from(addresses).where(eq(addresses.id, Number((inserted as { insertId?: number }).insertId))).limit(1))[0];
+}
+
+export async function listUserCart(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select().from(cartItems).where(eq(cartItems.userId, userId)).orderBy(desc(cartItems.updatedAt));
+}
+
+export async function replaceUserCart(userId: number, items: { productId: number; shopId: number; quantity: number }[]) {
+  const db = await getDb(); if (!db) throw new Error("Database not available");
+  await db.transaction(async (tx) => {
+    await tx.delete(cartItems).where(eq(cartItems.userId, userId));
+    const valid = items.filter((item) => Number.isInteger(item.quantity) && item.quantity > 0).slice(0, 100);
+    if (valid.length) await tx.insert(cartItems).values(valid.map((item) => ({ userId, productId: item.productId, shopId: item.shopId, quantity: item.quantity })));
+  });
+  return listUserCart(userId);
 }
 
 export async function listPendingAccounts() {
